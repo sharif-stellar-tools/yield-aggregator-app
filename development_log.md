@@ -1,2 +1,3 @@
 - [2026-03-10T10:00:00] feat: initial rust architecture scaffolding
 - [2026-03-14T10:00:00] chore: update cargo and stellar-sdk dependencies
+- [2026-03-18T10:00:00] feat: implement core stellar protocol interaction
