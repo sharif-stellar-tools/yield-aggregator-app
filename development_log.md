@@ -4,3 +4,4 @@
 - [2026-03-22T10:00:00] fix: resolve null pointer exception in edge case
 - [2026-03-26T10:00:00] refactor: clean up and modularize core SDK structure
 - [2026-03-30T10:00:00] docs: update README with API specifications
+- [2026-04-03T10:00:00] test: add comprehensive unit tests for stellar operations
