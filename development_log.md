@@ -7,3 +7,4 @@
 - [2026-04-03T10:00:00] test: add comprehensive unit tests for stellar operations
 - [2026-04-07T10:00:00] feat: integrate CI/CD Github Actions workflow for soroban
 - [2026-04-11T10:00:00] fix: correct typo in environment configuration
+- [2026-04-15T10:00:00] feat: add robust logging mechanism for on-chain events
