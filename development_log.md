@@ -12,3 +12,4 @@
 - [2026-04-23T10:00:00] fix: handle stellar network timeout errors gracefully
 - [2026-04-27T10:00:00] feat: implement secure wallet authentication flow
 - [2026-05-01T10:00:00] refactor: abstract reusable components for the CLI
+- [2026-05-05T10:00:00] docs: add detailed contribution guidelines for open source
