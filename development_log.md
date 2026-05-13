@@ -14,3 +14,4 @@
 - [2026-05-01T10:00:00] refactor: abstract reusable components for the CLI
 - [2026-05-05T10:00:00] docs: add detailed contribution guidelines for open source
 - [2026-05-09T10:00:00] test: improve overall test coverage to 85%
+- [2026-05-13T10:00:00] feat: design and implement smart contract data schema
