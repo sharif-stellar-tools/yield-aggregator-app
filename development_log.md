@@ -17,3 +17,4 @@
 - [2026-05-13T10:00:00] feat: design and implement smart contract data schema
 - [2026-05-17T10:00:00] fix: sanitize user input to prevent injection in soroban env
 - [2026-05-21T10:00:00] chore: clean up dead code and unused files
+- [2026-05-25T10:00:00] feat: final polish for initial beta release
