@@ -1,0 +1,40 @@
+name: PR Automation
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Welcome Contributor
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '?? Welcome to the Stellar-Oss-Hub! Thank you for submitting this PR for the GrantFox campaign. Our maintainers will review your contribution shortly. In the meantime, please ensure your code passes the CI checks.'
+            })
+      - name: Label PR based on branch
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const branchName = context.payload.pull_request.head.ref;
+            let labels = [];
+            if (branchName.startsWith('fix/')) labels.push('bug');
+            else if (branchName.startsWith('feat/')) labels.push('enhancement');
+            else if (branchName.startsWith('docs/')) labels.push('documentation');
+            
+            if (labels.length > 0) {
+              github.rest.issues.addLabels({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: labels
+              })
+            }
