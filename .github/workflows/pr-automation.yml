@@ -18,7 +18,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '?? Welcome to the Stellar-Oss-Hub! Thank you for submitting this PR for the GrantFox campaign. Our maintainers will review your contribution shortly. In the meantime, please ensure your code passes the CI checks.'
+              body: '?? Welcome to the sharif-stellar-tools! Thank you for submitting this PR for the Sharif campaign. Our maintainers will review your contribution shortly. In the meantime, please ensure your code passes the CI checks.'
             })
       - name: Label PR based on branch
         uses: actions/github-script@v6

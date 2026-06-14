@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>DeFi-Yield-Aggregator</h1>
+  <h1>yield-aggregator-app</h1>
   <p><strong>Automated yield farming vaults and liquidity provisioning for Soroban.</strong></p>
 </div>
 
@@ -7,7 +7,7 @@
 
 ## 📖 Overview
 
-DeFi-Yield-Aggregator is a critical component of our decentralized ecosystem. This repository contains the source code, tests, and deployment configurations necessary to run the service. Built with modern, enterprise-grade architecture, it ensures high availability, secure execution, and seamless integration with the broader network.
+yield-aggregator-app is a critical component of our decentralized ecosystem. This repository contains the source code, tests, and deployment configurations necessary to run the service. Built with modern, enterprise-grade architecture, it ensures high availability, secure execution, and seamless integration with the broader network.
 
 ## ✨ Key Features
 
@@ -26,8 +26,8 @@ DeFi-Yield-Aggregator is a critical component of our decentralized ecosystem. Th
 
 \\\ash
 # Clone the repository
-git clone https://github.com/YourOrganization/DeFi-Yield-Aggregator.git
-cd DeFi-Yield-Aggregator
+git clone https://github.com/YourOrganization/yield-aggregator-app.git
+cd yield-aggregator-app
 
 # Install dependencies and build
 # (Refer to package.json or Cargo.toml for specific build commands)
