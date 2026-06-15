@@ -1,5 +1,5 @@
 {
-  "name": "yield-aggregator-app",
+  "name": "sharif-stellar-tools/yield-aggregator-app",
   "version": "1.0.0",
   "scripts": {
     "compile": "hardhat compile",
