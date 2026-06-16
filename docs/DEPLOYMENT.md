@@ -32,11 +32,10 @@ bash scripts/deploy.sh
 This will:
 
 1. Ensure the source account exists (`vault-deployer` by default) and is funded.
-2. Build the contract to Wasm (`stellar contract build`).
-3. Optimize the Wasm (`stellar contract optimize`).
-4. Deploy it to Testnet (`stellar contract deploy`).
-5. Initialize it, setting the deployer as the vault admin.
-6. Write the resulting contract id to `deployments/testnet.json` and `.env`
+2. Build and optimize the contract to Wasm (`stellar contract build --optimize`).
+3. Deploy it to Testnet (`stellar contract deploy`).
+4. Initialize it, setting the deployer as the vault admin.
+5. Write the resulting contract id to `deployments/testnet.json` and `.env`
    (both git-ignored).
 
 ## Configuration
