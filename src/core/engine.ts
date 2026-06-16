@@ -1,17 +1,23 @@
 // Complex Core Engine Simulation 
- export class CoreEngine { constructor() { console.log('Engine initialized'); } public async processTx(txId: string): Promise<boolean> { return true; } }
-// Update at 2026-03-12T11:14:03
-// Update at 2026-03-18T11:14:03
-// Update at 2026-03-24T11:14:03
-// Update at 2026-03-30T11:14:03
-// Update at 2026-04-05T11:14:03
-// Update at 2026-04-11T11:14:03
-// Update at 2026-04-17T11:14:03
-// Update at 2026-04-23T11:14:03
-// Update at 2026-04-29T11:14:03
-// Update at 2026-05-05T11:14:03
-// Update at 2026-05-11T11:14:03
-// Update at 2026-05-17T11:14:03
-// Update at 2026-05-23T11:14:03
-// Update at 2026-05-29T11:14:03
-// Update at 2026-06-04T11:14:03
+import { ethers } from 'ethers';
+
+export class CoreEngine {
+  constructor() { console.log('Engine initialized'); }
+  public async processTx(txId: string): Promise<boolean> { return true; }
+}
+
+/**
+ * Verifies an Ethereum signature against a message and expected signer address.
+ * Handles edge cases: empty/null message, empty/null signature, invalid signature format.
+ * @returns true if the signature is valid and matches the expected address, false otherwise.
+ */
+export function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
+  if (!message || !signature || !expectedAddress) return false;
+  if (signature.length < 132) return false; // Ethereum signatures are 65 bytes = 130 hex chars + '0x'
+  try {
+    const recovered = ethers.utils.verifyMessage(message, signature);
+    return recovered.toLowerCase() === expectedAddress.toLowerCase();
+  } catch {
+    return false;
+  }
+}
