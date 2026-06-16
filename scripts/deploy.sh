@@ -75,7 +75,7 @@ WASM="target/wasm32v1-none/release/${WASM_NAME}.wasm"
 [ -f "$WASM" ] || { echo "Expected Wasm not found at $WASM" >&2; exit 1; }
 echo "Using Wasm: $WASM"
 
-# --- 4. deploy (idempotent) ------------------------------------------------
+# --- 3. deploy (idempotent) ------------------------------------------------
 CONTRACT_ID=""
 if [ "$FORCE" -eq 0 ] && [ -f "$DEPLOY_FILE" ]; then
   CONTRACT_ID="$(sed -n 's/.*"contract_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$DEPLOY_FILE" | head -1)"
@@ -88,7 +88,7 @@ else
   echo "Deployed contract id: $CONTRACT_ID"
 fi
 
-# --- 5. initialize (idempotent) --------------------------------------------
+# --- 4. initialize (idempotent) --------------------------------------------
 log "Initializing contract (admin = deployer)"
 set +e
 INIT_OUT="$(stellar contract invoke --id "$CONTRACT_ID" --source "$SOURCE" --network "$NETWORK" \
@@ -105,7 +105,7 @@ if [ "$INIT_RC" -ne 0 ]; then
   fi
 fi
 
-# --- 6. persist deployment metadata ----------------------------------------
+# --- 5. persist deployment metadata ----------------------------------------
 log "Recording deployment metadata"
 cat > "$DEPLOY_FILE" <<EOF
 {
