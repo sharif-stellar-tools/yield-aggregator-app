@@ -64,4 +64,5 @@ impl VaultContract {
     }
 }
 
+#[cfg(test)]
 mod test;
