@@ -1,0 +1,7 @@
+{
+  "network": "testnet",
+  "contract_name": "yield-aggregator-vault",
+  "contract_id": "CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "deployer_public_key": "GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "wasm": "target/wasm32v1-none/release/yield_aggregator_vault.wasm"
+}

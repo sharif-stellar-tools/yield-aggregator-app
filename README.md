@@ -33,6 +33,20 @@ cd yield-aggregator-app
 # (Refer to package.json or Cargo.toml for specific build commands)
 \\\
 
+## 🚢 Deployment (Soroban / Testnet)
+
+The Soroban vault contract (`src/lib.rs`) can be built and deployed to the
+Stellar Testnet with a single command:
+
+```bash
+npm run deploy:testnet   # or: make deploy
+```
+
+This builds the contract to Wasm, optimizes it, deploys it to Testnet, and
+initializes it. Secret keys are never stored in the repo — the source account is
+a `stellar-cli` identity, auto-funded via Friendbot on Testnet. See
+[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for full details and configuration.
+
 ## 🤝 Contributing
 We welcome contributions from the community! Please read our [Contributing Guidelines](./CONTRIBUTING.md) to get started. Before submitting a Pull Request, ensure that you have reviewed our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
