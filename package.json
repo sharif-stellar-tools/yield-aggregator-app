@@ -1,11 +1,34 @@
 {
   "name": "yield-aggregator-app",
   "version": "1.0.0",
+  "description": "A yield aggregator application with ERC4626 vault and Soroban smart contract support",
+  "main": "index.js",
+  "files": [
+    "contracts/",
+    "scripts/",
+    "src/",
+    "hardhat.config.ts",
+    "tsconfig.json"
+  ],
+  "keywords": [
+    "yield",
+    "aggregator",
+    "defi",
+    "erc4626",
+    "soroban",
+    "stellar",
+    "hardhat",
+    "solidity"
+  ],
+  "author": "sharif-stellar-tools",
+  "license": "MIT",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "build": "hardhat compile",
     "build:soroban": "stellar contract build",
     "test:soroban": "cargo test",
+    "prepublishOnly": "npm run build",
     "deploy:testnet": "bash scripts/deploy.sh"
   },
   "devDependencies": {
@@ -15,9 +38,15 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.8.3"
   },
-  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sharif-stellar-tools/yield-aggregator-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sharif-stellar-tools/yield-aggregator-app/issues"
+  },
+  "homepage": "https://github.com/sharif-stellar-tools/yield-aggregator-app#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

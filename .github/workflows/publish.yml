@@ -1,0 +1,104 @@
+# =============================================================================
+# Publish to npm
+# =============================================================================
+# This workflow publishes the yield-aggregator-app package to the npm registry
+# when a new GitHub release is created or a version tag (v*) is pushed.
+#
+# PREREQUISITES (one-time maintainer setup):
+#   1. Generate an npm automation token at https://www.npmjs.com/settings/tokens
+#      - Choose "Publish" as the token type.
+#      - Restrict it to this package if possible for security.
+#   2. In your GitHub repository, go to Settings → Secrets and variables → Actions.
+#   3. Click "New repository secret".
+#   4. Name: NPM_TOKEN
+#      Value: <paste the npm token from step 1>
+#   5. Click "Add secret".
+#
+# The workflow will fail with a clear error if NPM_TOKEN is not configured.
+# =============================================================================
+
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    steps:
+      # -----------------------------------------------------------------------
+      # Step 1 — Check out the repository
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # Step 2 — Validate NPM_TOKEN secret
+      # -----------------------------------------------------------------------
+      - name: Validate NPM_TOKEN is configured
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            echo "Go to Settings → Secrets and variables → Actions → New repository secret"
+            echo "Name: NPM_TOKEN  |  Value: your npm automation token"
+            echo "Generate a token at https://www.npmjs.com/settings/tokens"
+            exit 1
+          fi
+          echo "NPM_TOKEN is configured."
+
+      # -----------------------------------------------------------------------
+      # Step 3 — Set up Node.js (uses LTS for broad compatibility)
+      # -----------------------------------------------------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+          cache: 'npm'
+
+      # -----------------------------------------------------------------------
+      # Step 4 — Install dependencies
+      # -----------------------------------------------------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # -----------------------------------------------------------------------
+      # Step 5 — Build the package
+      # -----------------------------------------------------------------------
+      - name: Build package
+        run: npm run build
+
+      # -----------------------------------------------------------------------
+      # Step 6 — Run tests (fail-fast before publishing)
+      # -----------------------------------------------------------------------
+      - name: Run tests
+        run: npm test
+
+      # -----------------------------------------------------------------------
+      # Step 7 — Publish to npm
+      # -----------------------------------------------------------------------
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # Step 8 — Post-publish summary
+      # -----------------------------------------------------------------------
+      - name: Publish summary
+        if: success()
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "Successfully published ${PKG_NAME}@${PKG_VERSION} to npm."
+          echo "View it at: https://www.npmjs.com/package/${PKG_NAME}"
