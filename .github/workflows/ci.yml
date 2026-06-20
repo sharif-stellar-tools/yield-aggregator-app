@@ -1,8 +1,35 @@
 name: CI
 on: [push, pull_request]
+
 jobs:
-  build:
+  client-checks:
+    name: Client Checks
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - run: echo "Tests passed!"
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run check:client
+    - run: npm run test:client
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run check:e2e
+
+  provenance-hashes:
+    name: Provenance & Hashes
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: npm run check:provenance

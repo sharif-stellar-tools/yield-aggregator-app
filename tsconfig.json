@@ -7,7 +7,8 @@
     "rootDir": ".",
     "outDir": "dist",
     "resolveJsonModule": true,
+    "lib": ["ES2020", "DOM"],
     "types": ["node", "mocha", "chai"]
   },
-  "include": ["hardhat.config.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": ["hardhat.config.ts", "src/**/*.ts", "tests/**/*.ts", "public/**/*.js"]
 }

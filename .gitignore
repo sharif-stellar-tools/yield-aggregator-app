@@ -25,3 +25,6 @@ deployments/*.json
 
 # Wasm build outputs
 *.wasm
+
+# TypeChain generated types (Hardhat compilation artifacts)
+typechain-types
