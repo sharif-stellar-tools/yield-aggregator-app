@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield Aggregator Dashboard</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f5f7fa; color: #333; }
+  #dashboard { background: #fff; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  h2 { margin-top: 0; color: #1a1a2e; }
+  #balance-section { background: #f0f4ff; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+  #xlm-balance { font-size: 1.5rem; font-weight: 600; margin: 0; }
+  #usd-subtitle { margin: 0.25rem 0 0 0; color: #555; }
+  #price-info { font-size: 0.95rem; color: #444; }
+  .loading { color: #888; }
+  .error { color: #c00; }
+  .refresh-btn { margin-top: 1rem; padding: 0.5rem 1.5rem; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+  .refresh-btn:hover { background: #16213e; }
+  .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div id="dashboard-container">
+  <p class="loading">Loading dashboard...</p>
+</div>
+<script>
+  // Inline fallback if module script fails
+  (async function() {
+    const container = document.getElementById('dashboard-container');
+    try {
+      const module = await import('../src/ui/dashboard.js');
+      await module.renderDashboard('dashboard-container');
+    } catch (e) {
+      // If module import fails (e.g. file:// CORS), use inline implementation
+      if (e.message.includes('module') || e.message.includes('CORS')) {
+        renderInline();
+      } else {
+        container.innerHTML = `<p class="error">Error: ${e.message}</p>`;
+      }
+    }
+  })();
+
+  function renderInline() {
+    const container = document.getElementById('dashboard-container');
+    const CACHE_KEY = 'xlm_price_cache';
+    const CACHE_TTL_MS = 300000;
+
+    function getCachedPrice() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const cache = JSON.parse(raw);
+        if (Date.now() - cache.timestamp < CACHE_TTL_MS) return cache.usd;
+        localStorage.removeItem(CACHE_KEY);
+        return null;
+      } catch { return null; }
+    }
+
+    function setCachedPrice(usd) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ usd, timestamp: Date.now() }));
+      } catch {}
+    }
+
+    function formatUsd(amount) {
+      return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    }
+
+    function getXlmBalance() {
+      try {
+        const raw = localStorage.getItem('xlm_balance');
+        if (raw) { const v = parseFloat(raw); if (!isNaN(v) && v >= 0) return v; }
+      } catch {}
+      return 1000;
+    }
+
+    container.innerHTML = `
+      <div id="dashboard">
+        <h2>Dashboard</h2>
+        <div id="balance-section">
+          <p id="xlm-balance">XLM Balance: <span id="xlm-amount">—</span></p>
+          <p id="usd-subtitle" style="font-size:0.9em;color:#666;"></p>
+        </div>
+        <p id="price-info">Current XLM Price: <span id="xlm-price" class="loading">Loading...</span></p>
+        <p id="error-msg" class="error" style="display:none;"></p>
+        <button class="refresh-btn" id="refresh-btn">Refresh Price</button>
+      </div>`;
+
+    const xlmAmountEl = document.getElementById('xlm-amount');
+    const usdSubtitleEl = document.getElementById('usd-subtitle');
+    const xlmPriceEl = document.getElementById('xlm-price');
+    const errorMsgEl = document.getElementById('error-msg');
+    const refreshBtn = document.getElementById('refresh-btn');
+
+    const xlmBalance = getXlmBalance();
+    xlmAmountEl.textContent = xlmBalance.toLocaleString() + ' XLM';
+
+    async function loadPrice() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Loading...';
+      errorMsgEl.style.display = 'none';
+
+      try {
+        const cached = getCachedPrice();
+        if (cached !== null) {
+          xlmPriceEl.textContent = formatUsd(cached);
+          usdSubtitleEl.textContent = '\u2248 ' + formatUsd(xlmBalance * cached) + ' USD';
+          refreshBtn.disabled = false;
+          refreshBtn.textContent = 'Refresh Price';
+          return;
+        }
+
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (!data || typeof data.stellar?.usd !== 'number' || data.stellar.usd <= 0)
+          throw new Error('Invalid data: ' + JSON.stringify(data));
+
+        const price = data.stellar.usd;
+        setCachedPrice(price);
+        xlmPriceEl.textContent = formatUsd(price);
+        usdSubtitleEl.textContent = '\u2248 ' + formatUsd(xlmBalance * price) + ' USD';
+      } catch (err) {
+        xlmPriceEl.textContent = 'Unavailable';
+        errorMsgEl.textContent = 'Could not fetch XLM price: ' + err.message;
+        errorMsgEl.style.display = 'block';
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh Price';
+      }
+    }
+
+    refreshBtn.addEventListener('click', loadPrice);
+    loadPrice();
+  }
+</script>
+</body>
+</html>
