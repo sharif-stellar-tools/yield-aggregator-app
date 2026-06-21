@@ -38,6 +38,12 @@ export async function renderDashboard(containerId: string): Promise<void> {
       </div>
       <p id="price-info">Current XLM Price: <span id="xlm-price">Loading...</span></p>
       <p id="error-msg" style="color: #c00; display: none;"></p>
+      <div id="simulation-section">
+        <h3>Yield Simulation</h3>
+        <input type="number" id="deposit-amount" placeholder="Enter amount to deposit" />
+        <button id="simulate-yield-btn">Simulate</button>
+        <p id="estimated-yield"></p>
+      </div>
     </div>
   `;
 
@@ -45,6 +51,19 @@ export async function renderDashboard(containerId: string): Promise<void> {
   const usdSubtitleEl = document.getElementById('usd-subtitle')!;
   const xlmPriceEl = document.getElementById('xlm-price')!;
   const errorMsgEl = document.getElementById('error-msg')!;
+  const simulateBtn = document.getElementById('simulate-yield-btn')!;
+  const depositAmountEl = document.getElementById('deposit-amount') as HTMLInputElement;
+  const estimatedYieldEl = document.getElementById('estimated-yield')!;
+
+  simulateBtn.addEventListener('click', () => {
+    const amount = parseFloat(depositAmountEl.value);
+    if (!isNaN(amount) && amount > 0) {
+      const estimatedYield = amount * 0.05; // 5% APY
+      estimatedYieldEl.textContent = `Estimated yield: ${estimatedYield.toFixed(2)} XLM`;
+    } else {
+      estimatedYieldEl.textContent = 'Please enter a valid amount';
+    }
+  });
 
   const xlmBalance = getXlmBalance();
   xlmAmountEl.textContent = `${xlmBalance.toLocaleString()} XLM`;
