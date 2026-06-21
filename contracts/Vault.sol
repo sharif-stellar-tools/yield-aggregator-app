@@ -88,7 +88,7 @@ contract Vault is ERC4626, Ownable {
 
         // Step-by-step APY calculation:
         uint256 periodicReturn = (exampleYield * 1e18) / exampleAssets;     // Return per period (18 decimals)
-        uint256 annualizedReturn = periodicReturn * (365 / 30);             // Annualize (365 days)
+        uint256 annualizedReturn = (periodicReturn * 365) / 30;             // Annualize (365 days)
         
         apy = annualizedReturn / 1e16; // Convert to percentage (e.g., 1825 = 18.25%)
     }
