@@ -1,4 +1,4 @@
-y{
+{
   "name": "yield-aggregator-app",
   "version": "1.0.0",
   "description": "A yield aggregator application with ERC4626 vault and Soroban smart contract support",
