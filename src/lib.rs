@@ -7,6 +7,8 @@
 //! `contracts/Vault.sol`: a single administrator is configured once at
 //! initialization time.
 
+pub mod strategies;
+
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, Symbol,
 };
