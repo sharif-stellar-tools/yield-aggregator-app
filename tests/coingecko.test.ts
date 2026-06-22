@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { formatUsd, convertXlmToUsd } from '../src/api/coingecko';
+import { fetchXlmPrice, formatUsd, convertXlmToUsd } from '../src/api/coingecko';
 
 describe('formatUsd', () => {
   it('formats a whole number with two decimals', () => {
@@ -39,7 +39,6 @@ describe('convertXlmToUsd', () => {
 
 describe('fetchXlmPrice', () => {
   it('imports fetchXlmPrice as a function', () => {
-    const mod = require('../src/api/coingecko');
-    expect(mod.fetchXlmPrice).to.be.a('function');
+    expect(fetchXlmPrice).to.be.a('function');
   });
 });

@@ -10,5 +10,10 @@
     "lib": ["ES2020", "DOM"],
     "types": ["node", "mocha", "chai"]
   },
-  "include": ["hardhat.config.ts", "src/**/*.ts", "tests/**/*.ts", "public/**/*.js"]
+  "include": [
+    "hardhat.config.ts",
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["cypress", "cypress.config.ts"]
 }

@@ -26,27 +26,29 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts",
-    "build": "hardhat compile",
+    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts",
+    "build": "hardhat compile && tsc",
     "build:soroban": "stellar contract build",
     "test:soroban": "cargo test",
     "prepublishOnly": "npm run build",
     "deploy:testnet": "bash scripts/deploy.sh",
-    "lint": "npx tsc --noEmit",
-    "check:client": "npx tsc --noEmit src/api/coingecko.ts tests/coingecko.test.ts --esModuleInterop --target ES2020 --lib ES2020,DOM --module commonjs --skipLibCheck",
+    "lint": "tsc --noEmit && tsc --project cypress/tsconfig.json --noEmit",
+    "check:client": "tsc --noEmit src/api/coingecko.ts tests/coingecko.test.ts --esModuleInterop --target ES2020 --lib ES2020,DOM --module commonjs --skipLibCheck",
     "check:e2e": "npx hardhat test tests/Vault.test.ts tests/integration/flow.test.ts",
-    "check:provenance": "echo 'All files tracked by git. OK.'"
+    "check:provenance": "echo 'All files tracked by git. OK.'",
+    "cy:run": "cypress run"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^10.0.1",
-    "@types/node": "^20.3.0",
+    "@types/node": "^20.19.43",
     "chai": "^4.3.7",
+    "cypress": "^13.13.1",
     "hardhat": "^2.14.0",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.1.3"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.0",
