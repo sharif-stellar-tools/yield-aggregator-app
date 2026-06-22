@@ -24,19 +24,34 @@ export function setXlmBalance(amount: number): void {
   }
 }
 
-export async function renderDashboard(containerId: string): Promise<void> {
-  const container = document.getElementById(containerId);
-  if (!container) {
-    throw new Error(`Container #${containerId} not found`);
-  }
+function renderLoadingSkeleton(): string {
+  return `
+    <div id="dashboard">
+      <h2>Dashboard</h2>
+      <div id="balance-section">
+        <div class="skeleton skeleton-balance"></div>
+        <div class="skeleton skeleton-subtitle"></div>
+      </div>
+      <div style="margin-top:1rem;">
+        <div class="skeleton skeleton-price"></div>
+      </div>
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <span class="loading-text">Fetching yield data\u2026</span>
+      </div>
+    </div>
+  `;
+}
 
+function renderDashboardContent(xlmBalance: number): string {
+  return `
   const strategy = StrategyRegistry.getInstance().get('XLM Liquidity Pool');
 
   container.innerHTML = `
     <div id="dashboard">
       <h2>Dashboard</h2>
       <div id="balance-section">
-        <p id="xlm-balance">XLM Balance: <span id="xlm-amount">—</span></p>
+        <p id="xlm-balance">XLM Balance: <span id="xlm-amount">${xlmBalance.toLocaleString()} XLM</span></p>
         <p id="usd-subtitle" style="font-size: 0.9em; color: #666;"></p>
       </div>
       <p id="price-info">Current XLM Price: <span id="xlm-price">Loading...</span></p>
@@ -49,7 +64,12 @@ export async function renderDashboard(containerId: string): Promise<void> {
       </div>
     </div>
   `;
+}
 
+export async function renderDashboard(containerId: string): Promise<void> {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    throw new Error(`Container #${containerId} not found`);
   const xlmAmountEl = document.getElementById('xlm-amount')!;
   const usdSubtitleEl = document.getElementById('usd-subtitle')!;
   const xlmPriceEl = document.getElementById('xlm-price')!;
@@ -75,17 +95,35 @@ export async function renderDashboard(containerId: string): Promise<void> {
     });
   }
 
+  let isLoading = true;
   const xlmBalance = getXlmBalance();
-  xlmAmountEl.textContent = `${xlmBalance.toLocaleString()} XLM`;
 
+  // Show skeleton while data is loading
+  container.innerHTML = renderLoadingSkeleton();
+
+  // Fetch price data
+  let price: number;
   try {
-    const price = await fetchXlmPrice();
-    xlmPriceEl.textContent = formatUsd(price);
-    const usdValue = convertXlmToUsd(xlmBalance, price);
-    usdSubtitleEl.textContent = `≈ ${formatUsd(usdValue)} USD`;
+    price = await fetchXlmPrice();
   } catch (err) {
+    isLoading = false;
+    container.innerHTML = renderDashboardContent(xlmBalance);
+    const xlmPriceEl = document.getElementById('xlm-price')!;
+    const errorMsgEl = document.getElementById('error-msg')!;
     xlmPriceEl.textContent = 'Unavailable';
     errorMsgEl.textContent = `Could not fetch XLM price: ${err instanceof Error ? err.message : 'Unknown error'}`;
     errorMsgEl.style.display = 'block';
+    return;
   }
+
+  // Data loaded — swap skeleton for real content
+  isLoading = false;
+  container.innerHTML = renderDashboardContent(xlmBalance);
+
+  const xlmPriceEl = document.getElementById('xlm-price')!;
+  const usdSubtitleEl = document.getElementById('usd-subtitle')!;
+
+  xlmPriceEl.textContent = formatUsd(price);
+  const usdValue = convertXlmToUsd(xlmBalance, price);
+  usdSubtitleEl.textContent = `\u2248 ${formatUsd(usdValue)} USD`;
 }
