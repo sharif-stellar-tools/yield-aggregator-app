@@ -1,4 +1,5 @@
 import { fetchXlmPrice, formatUsd, convertXlmToUsd } from '../api/coingecko';
+import { StrategyRegistry } from '../core/strategies/StrategyRegistry';
 
 const XLM_BALANCE_KEY = 'xlm_balance';
 
@@ -29,6 +30,8 @@ export async function renderDashboard(containerId: string): Promise<void> {
     throw new Error(`Container #${containerId} not found`);
   }
 
+  const strategy = StrategyRegistry.getInstance().get('XLM Liquidity Pool');
+
   container.innerHTML = `
     <div id="dashboard">
       <h2>Dashboard</h2>
@@ -39,7 +42,7 @@ export async function renderDashboard(containerId: string): Promise<void> {
       <p id="price-info">Current XLM Price: <span id="xlm-price">Loading...</span></p>
       <p id="error-msg" style="color: #c00; display: none;"></p>
       <div id="simulation-section">
-        <h3>Yield Simulation</h3>
+        <h3>Yield Simulation (${strategy?.name ?? 'Unknown'})</h3>
         <input type="number" id="deposit-amount" placeholder="Enter amount to deposit" />
         <button id="simulate-yield-btn">Simulate</button>
         <p id="estimated-yield"></p>
@@ -55,15 +58,22 @@ export async function renderDashboard(containerId: string): Promise<void> {
   const depositAmountEl = document.getElementById('deposit-amount') as HTMLInputElement;
   const estimatedYieldEl = document.getElementById('estimated-yield')!;
 
-  simulateBtn.addEventListener('click', () => {
-    const amount = parseFloat(depositAmountEl.value);
-    if (!isNaN(amount) && amount > 0) {
-      const estimatedYield = amount * 0.05; // 5% APY
-      estimatedYieldEl.textContent = `Estimated yield: ${estimatedYield.toFixed(2)} XLM`;
-    } else {
-      estimatedYieldEl.textContent = 'Please enter a valid amount';
-    }
-  });
+  if (strategy) {
+    const { apy } = await strategy.getMetrics();
+    simulateBtn.addEventListener('click', async () => {
+      const amount = parseFloat(depositAmountEl.value);
+      if (!isNaN(amount) && amount > 0) {
+        const estimatedYield = await strategy.simulateDeposit(amount);
+        estimatedYieldEl.textContent = `Estimated yield: ${estimatedYield.toFixed(2)} XLM (${(apy * 100).toFixed(1)}% APY)`;
+      } else {
+        estimatedYieldEl.textContent = 'Please enter a valid amount';
+      }
+    });
+  } else {
+    simulateBtn.addEventListener('click', () => {
+      estimatedYieldEl.textContent = 'No strategy available';
+    });
+  }
 
   const xlmBalance = getXlmBalance();
   xlmAmountEl.textContent = `${xlmBalance.toLocaleString()} XLM`;

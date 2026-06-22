@@ -47,6 +47,28 @@ initializes it. Secret keys are never stored in the repo — the source account 
 a `stellar-cli` identity, auto-funded via Friendbot on Testnet. See
 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for full details and configuration.
 
+## 🔌 Adding a New Yield Protocol
+
+Create a file `src/core/strategies/YourProtocolStrategy.ts` implementing `IYieldStrategy`:
+
+```typescript
+import { IYieldStrategy, YieldMetrics } from './IYieldStrategy';
+
+export class YourProtocolStrategy implements IYieldStrategy {
+  readonly name = 'Your Protocol';
+
+  async getAPY(): Promise<number> { /* fetch/calculate APY */ }
+  async getTVL(): Promise<number> { /* fetch/calculate TVL */ }
+  async simulateDeposit(amount: number): Promise<number> { /* return estimated yield */ }
+  async getMetrics(): Promise<YieldMetrics> {
+    const [apy, tvl] = await Promise.all([this.getAPY(), this.getTVL()]);
+    return { apy, tvl };
+  }
+}
+```
+
+Register it in `src/core/strategies/index.ts` and add it to the auto-registration block in `StrategyRegistry.ts`. Write tests in `tests/strategies.test.ts` following the existing pattern.
+
 ## 🤝 Contributing
 We welcome contributions from the community! Please read our [Contributing Guidelines](./CONTRIBUTING.md) to get started. Before submitting a Pull Request, ensure that you have reviewed our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
