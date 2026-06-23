@@ -15,17 +15,21 @@
 #
 # Usage:
 #   ./scripts/deploy.sh                       # deploy to testnet with defaults
-#   NETWORK=testnet SOURCE=my-key ./scripts/deploy.sh
+#   STELLAR_NETWORK=testnet STELLAR_SOURCE=my-key ./scripts/deploy.sh
 #   ./scripts/deploy.sh --force               # force a fresh deploy
 #
 # Environment variables:
-#   NETWORK   Stellar network to target            (default: testnet)
-#   SOURCE    stellar-cli identity / source account (default: vault-deployer)
+#   STELLAR_NETWORK              Stellar network to target (default: testnet)
+#   STELLAR_SOURCE               stellar-cli identity / source account
+#   STELLAR_NETWORK_PASSPHRASE   Stellar network passphrase for clients
+#   STELLAR_HORIZON_URL          Horizon endpoint for clients
 #
 set -euo pipefail
 
-NETWORK="${NETWORK:-testnet}"
-SOURCE="${SOURCE:-vault-deployer}"
+NETWORK="${STELLAR_NETWORK:-${NETWORK:-testnet}}"
+SOURCE="${STELLAR_SOURCE:-${SOURCE:-vault-deployer}}"
+STELLAR_NETWORK_PASSPHRASE="${STELLAR_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}"
+STELLAR_HORIZON_URL="${STELLAR_HORIZON_URL:-https://horizon-testnet.stellar.org}"
 CONTRACT_NAME="yield-aggregator-vault"
 WASM_NAME="yield_aggregator_vault"
 FORCE=0
@@ -131,11 +135,15 @@ update_env() {
   fi
 }
 update_env "STELLAR_NETWORK" "$NETWORK"
+update_env "STELLAR_NETWORK_PASSPHRASE" "$STELLAR_NETWORK_PASSPHRASE"
+update_env "STELLAR_HORIZON_URL" "$STELLAR_HORIZON_URL"
 update_env "STELLAR_SOURCE" "$SOURCE"
 update_env "VAULT_CONTRACT_ID" "$CONTRACT_ID"
 update_env "DEPLOYER_PUBLIC_KEY" "$DEPLOYER_PUBKEY"
 
 log "Done."
 echo "Network:        $NETWORK"
+echo "Passphrase:     $STELLAR_NETWORK_PASSPHRASE"
+echo "Horizon URL:    $STELLAR_HORIZON_URL"
 echo "Contract ID:    $CONTRACT_ID"
 echo "Admin/Deployer: $DEPLOYER_PUBKEY"

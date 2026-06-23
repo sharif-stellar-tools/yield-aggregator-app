@@ -35,6 +35,22 @@ cd yield-aggregator-app
 
 ## 🚢 Deployment (Soroban / Testnet)
 
+### Stellar Network Configuration
+
+Local client and deployment code read the Stellar network settings from the
+environment. When the variables are omitted, the app falls back to Stellar
+Testnet so existing local development keeps working:
+
+```bash
+STELLAR_NETWORK=testnet
+STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+```
+
+Copy `.env.example` to `.env` or export the variables in your shell. For a
+standalone network, set all three values explicitly so client code, deployment
+scripts, and test utilities agree on the same passphrase and Horizon endpoint.
+
 The Soroban vault contract (`src/lib.rs`) can be built and deployed to the
 Stellar Testnet with a single command:
 

@@ -26,7 +26,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts",
+    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts tests/stellarNetwork.test.ts",
     "test:zap": "npx mocha --require ts-node/register tests/zap.test.ts",
     "build": "hardhat compile && tsc",
     "build:soroban": "stellar contract build",
