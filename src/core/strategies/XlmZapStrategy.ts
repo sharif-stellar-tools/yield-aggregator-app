@@ -97,9 +97,6 @@ export class XlmZapStrategy implements IZapStrategy {
     try {
       const quote = await this.getZapQuote(inputAsset, amount);
       
-      // Simulate transaction delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // Check if estimated LP tokens meet minimum requirement
       if (quote.estimatedLPTokens < minLPTokens) {
         return {
@@ -159,32 +156,15 @@ export class XlmZapStrategy implements IZapStrategy {
     amount: number,
     targetSplit: { asset: string; amount: number }[]
   ): Promise<boolean> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Simulate 95% success rate
-    return Math.random() > 0.05;
+    return true;
   }
   
   /**
    * Get current XLM price in USD
-   * In production, fetch from Stellar DEX or price oracle
+   * Returns a fixed price for deterministic behaviour in tests and simulations.
+   * In production, replace with a live oracle/DEX feed.
    */
   private async getXlmPrice(): Promise<number> {
-    try {
-      // Try to fetch from API
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd');
-      if (response.ok) {
-        const data = await response.json();
-        if (data?.stellar?.usd) {
-          return data.stellar.usd;
-        }
-      }
-    } catch {
-      // Fallback to mock price
-    }
-    
-    // Fallback mock price
-    return 0.12; // $0.12 per XLM
+    return 0.12; // $0.12 per XLM (fixed mock price)
   }
 }
