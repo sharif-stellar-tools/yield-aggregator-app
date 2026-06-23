@@ -3,7 +3,11 @@ import { ethers } from 'ethers';
 
 export class CoreEngine {
   constructor() { console.log('Engine initialized'); }
-  public async processTx(txId: string): Promise<boolean> { return true; }
+  public async processTx(txId: string, rpcEndpoint?: string): Promise<boolean> {
+    void txId;
+    void rpcEndpoint;
+    return true;
+  }
 }
 
 /**
