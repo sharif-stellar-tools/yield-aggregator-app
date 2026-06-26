@@ -1,14 +1,22 @@
 import { XlmZapStrategy } from '../core/strategies/XlmZapStrategy';
 import { ZapQuote } from '../core/strategies/IZapStrategy';
+import { SorobanSimulator, SimulationResult } from '../api/sorobanSimulation';
 
 export class ZapModal {
   private modal: HTMLElement | null = null;
   private zapStrategy: XlmZapStrategy;
+  private sorobanSimulator: SorobanSimulator;
   private currentQuote: ZapQuote | null = null;
+  private currentSimulation: SimulationResult | null = null;
   private onSuccess?: (lpTokens: number, txHash: string) => void;
   
   constructor() {
     this.zapStrategy = new XlmZapStrategy();
+    // Initialize with mock RPC endpoints (replace with real endpoints in production)
+    this.sorobanSimulator = new SorobanSimulator([
+      'https://soroban-testnet.stellar.org',
+      'https://testnet.rpc.stellar.org'
+    ]);
   }
   
   /**
@@ -94,6 +102,10 @@ export class ZapModal {
               <button id="zap-get-quote-btn" class="zap-btn zap-btn-secondary">
                 Get Quote
               </button>
+              
+              <button id="zap-simulate-btn" class="zap-btn zap-btn-secondary" style="display: none;">
+                Preview Transaction
+              </button>
             </div>
             
             <div id="zap-quote-section" class="zap-quote-section" style="display: none;">
@@ -120,6 +132,24 @@ export class ZapModal {
               <button id="zap-execute-btn" class="zap-btn zap-btn-primary">
                 Execute Zap
               </button>
+            </div>
+            
+            <div id="zap-simulation-section" class="zap-simulation-section" style="display: none;">
+              <h4>🔍 Transaction Preview</h4>
+              <div class="zap-simulation-details">
+                <div class="zap-simulation-row">
+                  <span>Expected LP Tokens:</span>
+                  <strong id="zap-sim-lp-tokens">--</strong>
+                </div>
+                <div class="zap-simulation-row">
+                  <span>Estimated Fee:</span>
+                  <strong id="zap-sim-fee">--</strong>
+                </div>
+                <div class="zap-simulation-row">
+                  <span>State Changes:</span>
+                  <div id="zap-sim-state-changes">--</div>
+                </div>
+              </div>
             </div>
             
             <div id="zap-loading" class="zap-loading" style="display: none;">
@@ -149,11 +179,13 @@ export class ZapModal {
     const closeBtn = document.getElementById('zap-close-btn');
     const overlay = document.getElementById('zap-modal-overlay');
     const getQuoteBtn = document.getElementById('zap-get-quote-btn');
+    const simulateBtn = document.getElementById('zap-simulate-btn');
     const executeBtn = document.getElementById('zap-execute-btn');
     
     closeBtn?.addEventListener('click', () => this.close());
     overlay?.addEventListener('click', () => this.close());
     getQuoteBtn?.addEventListener('click', () => this.handleGetQuote());
+    simulateBtn?.addEventListener('click', () => this.handleSimulate());
     executeBtn?.addEventListener('click', () => this.handleExecuteZap());
   }
   
@@ -194,9 +226,54 @@ export class ZapModal {
       this.displayQuote(quote);
       this.hideLoading();
       quoteSection.style.display = 'block';
+      
+      // Show the simulate button after getting quote
+      const simulateBtn = document.getElementById('zap-simulate-btn')!;
+      simulateBtn.style.display = 'block';
     } catch (error) {
       this.hideLoading();
       this.showError(error instanceof Error ? error.message : 'Failed to get quote');
+    }
+  }
+  
+  /**
+   * Handle simulating the transaction before execution
+   */
+  private async handleSimulate(): Promise<void> {
+    if (!this.currentQuote) {
+      this.showError('No quote available. Please get a quote first.');
+      return;
+    }
+    
+    const simulationSection = document.getElementById('zap-simulation-section')!;
+    const errorDiv = document.getElementById('zap-error')!;
+    
+    // Clear previous errors
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+    
+    // Show loading
+    this.showLoading('Simulating transaction...');
+    simulationSection.style.display = 'none';
+    
+    try {
+      const simulation = await this.sorobanSimulator.simulateZap(
+        this.currentQuote.inputAsset,
+        this.currentQuote.inputAmount
+      );
+      
+      this.currentSimulation = simulation;
+      this.hideLoading();
+      
+      if (simulation.success) {
+        this.displaySimulation(simulation);
+        simulationSection.style.display = 'block';
+      } else {
+        this.showError(simulation.error || 'Simulation failed');
+      }
+    } catch (error) {
+      this.hideLoading();
+      this.showError(error instanceof Error ? error.message : 'Failed to simulate transaction');
     }
   }
   
@@ -258,6 +335,46 @@ export class ZapModal {
     assetSplitEl.innerHTML = splitHtml;
     
     estimatedSlippageEl.textContent = `${(quote.slippage * 100).toFixed(2)}%`;
+  }
+  
+  /**
+   * Display simulation results in the modal
+   */
+  private displaySimulation(simulation: SimulationResult): void {
+    const lpTokensEl = document.getElementById('zap-sim-lp-tokens')!;
+    const feeEl = document.getElementById('zap-sim-fee')!;
+    const stateChangesEl = document.getElementById('zap-sim-state-changes')!;
+    
+    // Display expected LP tokens
+    if (simulation.expectedOutput && simulation.expectedOutput.length > 0) {
+      const lpOutput = simulation.expectedOutput.find(o => o.symbol === 'LP_TOKEN');
+      lpTokensEl.textContent = lpOutput ? lpOutput.amount : '--';
+    } else {
+      lpTokensEl.textContent = '--';
+    }
+    
+    // Display estimated fee
+    feeEl.textContent = simulation.estimatedFee || '--';
+    
+    // Display state changes
+    if (simulation.stateChanges && simulation.stateChanges.length > 0) {
+      const changesHtml = simulation.stateChanges
+        .map(change => `
+          <div class="zap-state-change-item">
+            <div class="zap-state-change-type">${change.type}</div>
+            <div class="zap-state-change-address">${change.address.substring(0, 10)}...</div>
+            <div class="zap-state-change-values">
+              <span class="zap-state-before">${change.before || 'N/A'}</span>
+              <span>→</span>
+              <span class="zap-state-after">${change.after || 'N/A'}</span>
+            </div>
+          </div>
+        `)
+        .join('');
+      stateChangesEl.innerHTML = changesHtml;
+    } else {
+      stateChangesEl.textContent = 'No state changes detected';
+    }
   }
   
   /**
@@ -517,6 +634,79 @@ export class ZapModal {
       
       .zap-quote-row strong {
         color: #1a1a2e;
+      }
+      
+      .zap-simulation-section {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+      }
+      
+      .zap-simulation-section h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        color: #166534;
+      }
+      
+      .zap-simulation-details {
+        margin-bottom: 1rem;
+      }
+      
+      .zap-simulation-row {
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #bbf7d0;
+      }
+      
+      .zap-simulation-row:last-child {
+        border-bottom: none;
+      }
+      
+      .zap-simulation-row span {
+        color: #4b5563;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+      }
+      
+      .zap-simulation-row strong {
+        color: #166534;
+      }
+      
+      .zap-state-change-item {
+        background: #fff;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+      }
+      
+      .zap-state-change-type {
+        font-weight: 600;
+        color: #059669;
+        margin-bottom: 0.25rem;
+      }
+      
+      .zap-state-change-address {
+        color: #6b7280;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+      }
+      
+      .zap-state-change-values {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      
+      .zap-state-before {
+        color: #dc2626;
+      }
+      
+      .zap-state-after {
+        color: #16a34a;
       }
       
       .zap-loading {
