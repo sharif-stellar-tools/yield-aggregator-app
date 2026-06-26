@@ -28,6 +28,7 @@
     "test": "hardhat test",
     "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts",
     "test:zap": "npx mocha --require ts-node/register tests/zap.test.ts",
+    "test:coverage": "nyc --reporter=text --reporter=html npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts tests/rpcLoadBalancer.test.ts",
     "build": "hardhat compile && tsc",
     "build:soroban": "stellar contract build",
     "test:soroban": "cargo test",
@@ -48,6 +49,7 @@
     "cypress": "^13.13.1",
     "hardhat": "^2.14.0",
     "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
