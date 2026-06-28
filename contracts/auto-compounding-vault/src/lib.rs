@@ -132,3 +132,6 @@ impl AutoCompoundingVault {
         env.storage().instance().get(&DataKey::UserShares(user)).unwrap_or(0)
     }
 }
+
+#[cfg(test)]
+mod test;
