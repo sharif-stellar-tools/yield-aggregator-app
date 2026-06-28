@@ -47,10 +47,25 @@ impl AutoCompoundingVault {
         env.storage().instance().set(&DataKey::FallbackOracle, &fallback);
     }
 
-    pub fn deposit(env: Env, user: Address, amount: i128) -> i128 {
+    pub fn deposit(env: Env, user: Address, amount: i128, min_shares: i128, token_symbol: Symbol) -> i128 {
         user.require_auth();
+
+        // Fetch price first to ensure the oracle is active and the price is fresh.
+        // This acts as a security check before execution.
+        let _price = oracle::fetch_price(&env, token_symbol).unwrap();
+
         let mut state: VaultState = env.storage().instance().get(&DataKey::VaultState).unwrap();
         let shares = if state.total_deposits == 0 { amount } else { (amount * state.total_shares) / state.total_deposits };
+        
+        if shares < min_shares {
+            panic!("slippage limit exceeded");
+        }
+
+        // Perform token transfer from user to the vault contract
+        let token_addr: Address = env.storage().instance().get(&DataKey::Token).unwrap();
+        let token_client = token::Client::new(&env, &token_addr);
+        token_client.transfer(&user, &env.current_contract_address(), &amount);
+
         state.total_deposits += amount;
         state.total_shares += shares;
         let user_key = DataKey::UserShares(user.clone());
@@ -60,12 +75,29 @@ impl AutoCompoundingVault {
         shares
     }
 
-    pub fn withdraw(env: Env, user: Address, shares: i128) -> i128 {
+    pub fn withdraw(env: Env, user: Address, shares: i128, min_assets: i128, token_symbol: Symbol) -> i128 {
         user.require_auth();
+
+        // Fetch price first to ensure the oracle is active and the price is fresh.
+        let _price = oracle::fetch_price(&env, token_symbol).unwrap();
+
         let state: VaultState = env.storage().instance().get(&DataKey::VaultState).unwrap();
         let user_key = DataKey::UserShares(user.clone());
         let user_shares: i128 = env.storage().instance().get(&user_key).unwrap_or(0);
+        if user_shares < shares {
+            panic!("insufficient shares");
+        }
+
         let amount = (shares * state.total_deposits) / state.total_shares;
+        if amount < min_assets {
+            panic!("slippage limit exceeded");
+        }
+
+        // Perform token transfer from the vault contract to the user
+        let token_addr: Address = env.storage().instance().get(&DataKey::Token).unwrap();
+        let token_client = token::Client::new(&env, &token_addr);
+        token_client.transfer(&env.current_contract_address(), &user, &amount);
+
         let mut new_state = state;
         new_state.total_deposits -= amount;
         new_state.total_shares -= shares;
