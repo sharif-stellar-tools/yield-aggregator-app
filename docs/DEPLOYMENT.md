@@ -45,14 +45,22 @@ The script is parameterized through environment variables (see
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `NETWORK` | `testnet` | Target network. The script refuses `mainnet`/`public`. |
-| `SOURCE` | `vault-deployer` | `stellar-cli` identity used as the source account. |
+| `STELLAR_NETWORK` | `testnet` | Target network. The script refuses `mainnet`/`public`. Legacy `NETWORK` is still accepted as a fallback. |
+| `STELLAR_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` | Passphrase used by local clients and written to `.env` for the deployed network. |
+| `STELLAR_HORIZON_URL` | `https://horizon-testnet.stellar.org` | Horizon endpoint used by local clients and written to `.env`. |
+| `STELLAR_SOURCE` | `vault-deployer` | `stellar-cli` identity used as the source account. Legacy `SOURCE` is still accepted as a fallback. |
 
 Examples:
 
 ```bash
 # Use a different identity:
-SOURCE=my-key npm run deploy:testnet
+STELLAR_SOURCE=my-key npm run deploy:testnet
+
+# Point local clients at a standalone network:
+STELLAR_NETWORK=standalone \
+STELLAR_NETWORK_PASSPHRASE="Standalone Network ; February 2017" \
+STELLAR_HORIZON_URL=http://localhost:8000 \
+bash scripts/deploy.sh
 
 # Force a fresh deploy instead of reusing the cached contract id:
 bash scripts/deploy.sh --force
@@ -64,6 +72,11 @@ bash scripts/deploy.sh --force
 # 1. Create and fund a testnet identity
 stellar keys generate vault-deployer --network testnet
 stellar keys fund vault-deployer --network testnet
+
+# 1a. Export matching client/network settings
+export STELLAR_NETWORK=testnet
+export STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+export STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 
 # 2. Build & optimize
 stellar contract build --optimize
