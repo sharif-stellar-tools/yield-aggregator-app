@@ -1,5 +1,6 @@
-﻿#![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env};
+#![no_std]
+use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, Symbol};
+mod oracle;
 
 #[contracttype]
 #[derive(Clone)]
@@ -14,8 +15,11 @@ pub struct VaultState {
 #[contracttype]
 pub enum DataKey {
     VaultState,
-    UserDeposit(Address),
+    Token,
+    Admin,
     UserShares(Address),
+    PrimaryOracle,
+    FallbackOracle,
 }
 
 #[contract]
@@ -23,7 +27,7 @@ pub struct AutoCompoundingVault;
 
 #[contractimpl]
 impl AutoCompoundingVault {
-    pub fn initialize(env: Env, token: Address) {
+    pub fn initialize(env: Env, token: Address, admin: Address) {
         let state = VaultState {
             total_deposits: 0,
             total_shares: 0,
@@ -32,7 +36,15 @@ impl AutoCompoundingVault {
             total_yield_harvested: 0,
         };
         env.storage().instance().set(&DataKey::VaultState, &state);
-        env.storage().instance().set(&DataKey::UserDeposit(token.clone()), &token);
+        env.storage().instance().set(&DataKey::Token, &token);
+        env.storage().instance().set(&DataKey::Admin, &admin);
+    }
+
+    pub fn set_oracles(env: Env, primary: Address, fallback: Address) {
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::PrimaryOracle, &primary);
+        env.storage().instance().set(&DataKey::FallbackOracle, &fallback);
     }
 
     pub fn deposit(env: Env, user: Address, amount: i128) -> i128 {
@@ -71,8 +83,17 @@ impl AutoCompoundingVault {
         env.storage().instance().set(&DataKey::VaultState, &state);
     }
 
-    pub fn get_state(env: Env) -> VaultState {
-        env.storage().instance().get(&DataKey::VaultState).unwrap()
+    pub fn get_tvl(env: Env, token: Symbol) -> u128 {
+        // Fetch the latest price for the token using the oracle module.
+        match oracle::fetch_price(&env, token) {
+            Ok(price) => {
+                // total_deposits is in the *native* token units; we multiply by price.
+                // price is assumed to be scaled appropriately (e.g., price * 1e7).
+                let state: VaultState = env.storage().instance().get(&DataKey::VaultState).unwrap();
+                state.total_deposits as u128 * price
+            }
+            Err(_) => 0, // If price is unavailable or stale we return 0 to avoid misleading TVL.
+        }
     }
 
     pub fn get_user_shares(env: Env, user: Address) -> i128 {
