@@ -1,0 +1,58 @@
+# scenarios/basic.yaml
+#
+# Basic 10-cycle vault simulation.
+#
+# This is the default scenario run by the CI smoke test.
+# It simulates two users depositing into the vault, 10 daily compound cycles,
+# and both users withdrawing at the end.
+#
+# ─── Field Reference ─────────────────────────────────────────────────────────
+#
+# name:                        (string, required)
+#   Human-readable label shown in the simulation header.
+#
+# apy_percent:                 (number, required, > 0)
+#   Annual Percentage Yield applied to the vault.
+#   e.g. 12.0 means 12% APY.  The per-cycle rate is derived as:
+#     rate = (1 + APY/100) ^ (compound_interval_seconds / 31,557,600) - 1
+#
+# cycles:                      (integer, required, > 0)
+#   Number of compound cycles to simulate.
+#   Can be overridden at runtime with --cycles <n>.
+#
+# compound_interval_seconds:   (integer, required, > 0)
+#   Simulated seconds between each compound call.
+#   86400 = 1 day, 3600 = 1 hour, 604800 = 1 week.
+#
+# fee_percent:                 (number, required, >= 0, < 100)
+#   Protocol performance fee as a percentage of each yield harvest.
+#   0.5 means 0.5% of each cycle's gross yield is deducted as protocol fee.
+#
+# users:                       (list, required, min 1 item)
+#   Each entry represents one depositor in the simulation.
+#
+#   - name:                    (string, required)
+#       Label used in the per-user summary table.
+#
+#     deposit_amount:          (number, required, > 0)
+#       Number of tokens deposited into the vault before cycle 1.
+#
+#     withdraw_after_cycle:    (integer, optional, >= 1)
+#       Cycle number after which this user withdraws all shares.
+#       Omit to withdraw at the end of the last cycle.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Basic 10-cycle daily compound"
+apy_percent: 12.0
+cycles: 10
+compound_interval_seconds: 86400   # 1 day
+fee_percent: 0.5
+
+users:
+  - name: Alice
+    deposit_amount: 1000
+    # Alice holds for all 10 cycles (no explicit withdraw_after_cycle)
+
+  - name: Bob
+    deposit_amount: 500
+    withdraw_after_cycle: 5        # Bob exits halfway through

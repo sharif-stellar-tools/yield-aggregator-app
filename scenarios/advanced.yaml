@@ -1,0 +1,37 @@
+# scenarios/advanced.yaml
+#
+# Advanced 100-cycle vault simulation.
+#
+# Tests the acceptance criterion: "Simulation completes a 100-cycle scenario
+# in under 10 seconds."  Uses hourly compounding with five users at various
+# deposit sizes, some with early exits, to exercise the full simulation loop.
+#
+# See scenarios/basic.yaml for full field documentation.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Advanced 100-cycle hourly compound (5 users)"
+apy_percent: 18.5
+cycles: 100
+compound_interval_seconds: 3600    # 1 hour
+fee_percent: 1.0
+
+users:
+  - name: Alice
+    deposit_amount: 10000
+    # Alice holds for the full 100 cycles
+
+  - name: Bob
+    deposit_amount: 5000
+    withdraw_after_cycle: 25       # Bob exits after 25 hours
+
+  - name: Carol
+    deposit_amount: 2500
+    withdraw_after_cycle: 50       # Carol exits at the midpoint
+
+  - name: Dave
+    deposit_amount: 7500
+    withdraw_after_cycle: 75       # Dave exits 75% through
+
+  - name: Eve
+    deposit_amount: 1000
+    # Eve holds for all 100 cycles

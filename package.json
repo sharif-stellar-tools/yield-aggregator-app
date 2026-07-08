@@ -26,7 +26,9 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts tests/stellarNetwork.test.ts",
+    "sim": "ts-node src/cli/sim.ts",
+    "test:sim": "npx mocha --require ts-node/register tests/sim.test.ts",
+    "test:client": "npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts tests/stellarNetwork.test.ts tests/sim.test.ts",
     "test:zap": "npx mocha --require ts-node/register tests/zap.test.ts",
     "test:coverage": "nyc --reporter=text --reporter=html npx mocha --require ts-node/register tests/coingecko.test.ts tests/strategies.test.ts tests/zap.test.ts tests/rpcLoadBalancer.test.ts",
     "build": "hardhat compile && tsc",
@@ -43,6 +45,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@types/chai": "^4.3.5",
+    "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.19.43",
     "chai": "^4.3.7",
@@ -61,8 +64,11 @@
     "@openzeppelin/contracts": "^4.8.3",
     "@typechain/ethers-v5": "^10.1.0",
     "@typechain/hardhat": "^6.1.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
     "ethers": "^5.7.2",
     "hardhat-gas-reporter": "^1.0.8",
+    "js-yaml": "^4.1.0",
     "solidity-coverage": "^0.8.1",
     "typechain": "^8.1.0"
   },
