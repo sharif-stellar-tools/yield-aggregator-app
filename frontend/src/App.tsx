@@ -35,7 +35,7 @@ function App() {
   }, []);
 
   return (
-    <div className="container animate-fade-in">
+    <div className="container animate-fade-in" style={{ overflowX: 'hidden' }}>
       <header className="flex justify-between items-center" style={{ marginBottom: '3rem' }}>
         <div className="flex items-center gap-4">
           <div className="glass-panel" style={{ padding: '0.75rem', borderRadius: '12px' }}>
@@ -52,7 +52,7 @@ function App() {
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Global TVL
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+            <div className="tvl-value" style={{ fontWeight: 700 }}>
               {isLoading ? '...' : `$${globalData?.totalTvl.toLocaleString()}`}
             </div>
           </div>
@@ -79,11 +79,7 @@ function App() {
       <main className="flex flex-col gap-8">
         <section>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', fontWeight: 600 }}>Active Vaults</h2>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '1.5rem' 
-          }}>
+          <div className="vault-grid">
             {isLoading ? (
               // Skeletons
               Array.from({ length: 3 }).map((_, i) => (

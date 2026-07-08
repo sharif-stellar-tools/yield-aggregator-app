@@ -16,41 +16,45 @@ interface ApyChartProps {
 export const ApyChart = ({ vault }: ApyChartProps) => {
   if (!vault) {
     return (
-      <div className="glass-panel flex items-center justify-center" style={{ height: '400px', width: '100%' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Select a vault to view its APY trends</p>
+      <div className="chart-wrapper">
+        <div className="glass-panel flex items-center justify-center chart-panel empty-state">
+          <p style={{ color: 'var(--text-secondary)' }}>Select a vault to view its APY trends</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '2rem', height: '450px', width: '100%' }}>
-      <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem' }}>
-        <span className="text-gradient">{vault.name}</span> Historical APY
-      </h3>
-      
-      <ResponsiveContainer width="100%" height="85%">
-        <AreaChart data={vault.historicalApy} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="colorApy" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-          <XAxis 
-            dataKey="date" 
-            stroke="var(--text-secondary)" 
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-            tickMargin={10}
-            minTickGap={30}
-          />
-          <YAxis 
-            stroke="var(--text-secondary)" 
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-            tickFormatter={(value) => `${value}%`}
-            domain={['dataMin - 1', 'dataMax + 1']}
-            tickMargin={10}
-          />
+    <div className="chart-wrapper">
+      <div className="glass-panel animate-fade-in chart-panel">
+        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem' }}>
+          <span className="text-gradient">{vault.name}</span> Historical APY
+        </h3>
+        
+        <ResponsiveContainer width="100%" height="85%">
+          <AreaChart data={vault.historicalApy} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorApy" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis 
+              dataKey="date" 
+              stroke="var(--text-secondary)" 
+              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+              tickMargin={10}
+              minTickGap={30}
+            />
+            <YAxis 
+              stroke="var(--text-secondary)" 
+              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+              tickFormatter={(value) => `${value}%`}
+              domain={['dataMin - 1', 'dataMax + 1']}
+              tickMargin={10}
+              width={45}
+            />
           <Tooltip 
             contentStyle={{ 
               backgroundColor: 'var(--bg-secondary)', 
@@ -72,8 +76,9 @@ export const ApyChart = ({ vault }: ApyChartProps) => {
             fill="url(#colorApy)" 
             activeDot={{ r: 6, fill: 'var(--accent-secondary)', stroke: 'var(--bg-primary)', strokeWidth: 2 }}
           />
-        </AreaChart>
-      </ResponsiveContainer>
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
