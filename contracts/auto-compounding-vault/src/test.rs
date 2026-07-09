@@ -192,3 +192,133 @@ fn test_panic_when_both_oracles_unavailable() {
     // Reverts due to unavailability of price feed
     vault.deposit(&user, &100, &90, &token_symbol);
 }
+
+// --------------------------------------------------------------------------
+// Emergency pause / multi-sig governance tests
+// --------------------------------------------------------------------------
+
+#[test]
+fn test_default_single_admin_can_pause_and_unpause() {
+    let env = Env::default();
+    let (_token_id, vault, _user, _primary_oracle, _fallback_oracle, admin) = setup_test_env(&env);
+
+    assert!(!vault.is_paused());
+
+    // Default governance is 1-of-1 (the sole admin), so a single signer suffices.
+    let signers = soroban_sdk::vec![&env, admin.clone()];
+    vault.pause(&signers);
+    assert!(vault.is_paused());
+
+    vault.unpause(&signers);
+    assert!(!vault.is_paused());
+}
+
+#[test]
+fn test_paused_blocks_all_mutating_entrypoints() {
+    let env = Env::default();
+    let (_token_id, vault, user, primary_oracle, _fallback_oracle, admin) =
+        setup_test_env(&env);
+    let token_symbol = Symbol::new(&env, "USDC");
+    let current_ts = 1000;
+    env.ledger().set_timestamp(current_ts);
+    primary_oracle.set_price(&token_symbol, &500_000, &current_ts);
+
+    let signers = soroban_sdk::vec![&env, admin.clone()];
+    vault.pause(&signers);
+
+    let deposit_result = vault.try_deposit(&user, &100, &90, &token_symbol);
+    assert_eq!(deposit_result, Err(Ok(Error::ContractPaused)));
+
+    let withdraw_result = vault.try_withdraw(&user, &10, &0, &token_symbol);
+    assert_eq!(withdraw_result, Err(Ok(Error::ContractPaused)));
+
+    let compound_result = vault.try_compound(&10);
+    assert_eq!(compound_result, Err(Ok(Error::ContractPaused)));
+
+    let new_primary = Address::generate(&env);
+    let new_fallback = Address::generate(&env);
+    let set_oracles_result = vault.try_set_oracles(&new_primary, &new_fallback);
+    assert_eq!(set_oracles_result, Err(Ok(Error::ContractPaused)));
+
+    let other_signer = Address::generate(&env);
+    let new_signers = soroban_sdk::vec![&env, admin.clone(), other_signer.clone()];
+    let set_admin_signers_result = vault.try_set_admin_signers(&new_signers, &2);
+    assert_eq!(set_admin_signers_result, Err(Ok(Error::ContractPaused)));
+
+    // Unpausing re-enables normal operation.
+    vault.unpause(&signers);
+    let shares = vault.deposit(&user, &100, &90, &token_symbol);
+    assert_eq!(shares, 100);
+}
+
+#[test]
+fn test_single_signer_cannot_pause_when_threshold_above_one() {
+    let env = Env::default();
+    let (_token_id, vault, _user, _primary_oracle, _fallback_oracle, admin) =
+        setup_test_env(&env);
+
+    let signer_b = Address::generate(&env);
+    let signer_c = Address::generate(&env);
+    let signers_set = soroban_sdk::vec![&env, admin.clone(), signer_b.clone(), signer_c.clone()];
+    vault.set_admin_signers(&signers_set, &2);
+
+    // Below threshold: only one of three required signatures supplied.
+    let single = soroban_sdk::vec![&env, admin.clone()];
+    let result = vault.try_pause(&single);
+    assert_eq!(result, Err(Ok(Error::InsufficientSignatures)));
+    assert!(!vault.is_paused());
+}
+
+#[test]
+fn test_pause_succeeds_at_exact_threshold() {
+    let env = Env::default();
+    let (_token_id, vault, _user, _primary_oracle, _fallback_oracle, admin) =
+        setup_test_env(&env);
+
+    let signer_b = Address::generate(&env);
+    let signer_c = Address::generate(&env);
+    let signers_set = soroban_sdk::vec![&env, admin.clone(), signer_b.clone(), signer_c.clone()];
+    vault.set_admin_signers(&signers_set, &2);
+
+    // Exactly 2-of-3 signatures supplied.
+    let quorum = soroban_sdk::vec![&env, admin.clone(), signer_b.clone()];
+    vault.pause(&quorum);
+    assert!(vault.is_paused());
+
+    vault.unpause(&quorum);
+    assert!(!vault.is_paused());
+}
+
+#[test]
+fn test_pause_rejects_duplicate_signer() {
+    let env = Env::default();
+    let (_token_id, vault, _user, _primary_oracle, _fallback_oracle, admin) =
+        setup_test_env(&env);
+
+    let signer_b = Address::generate(&env);
+    let signers_set = soroban_sdk::vec![&env, admin.clone(), signer_b.clone()];
+    vault.set_admin_signers(&signers_set, &2);
+
+    // Same signer counted twice cannot satisfy a 2-of-2 threshold.
+    let duplicated = soroban_sdk::vec![&env, admin.clone(), admin.clone()];
+    let result = vault.try_pause(&duplicated);
+    assert_eq!(result, Err(Ok(Error::DuplicateSigner)));
+    assert!(!vault.is_paused());
+}
+
+#[test]
+fn test_pause_rejects_signer_outside_admin_set() {
+    let env = Env::default();
+    let (_token_id, vault, _user, _primary_oracle, _fallback_oracle, admin) =
+        setup_test_env(&env);
+
+    let signer_b = Address::generate(&env);
+    let outsider = Address::generate(&env);
+    let signers_set = soroban_sdk::vec![&env, admin.clone(), signer_b.clone()];
+    vault.set_admin_signers(&signers_set, &2);
+
+    let with_outsider = soroban_sdk::vec![&env, admin.clone(), outsider.clone()];
+    let result = vault.try_pause(&with_outsider);
+    assert_eq!(result, Err(Ok(Error::NotAdminSigner)));
+    assert!(!vault.is_paused());
+}
