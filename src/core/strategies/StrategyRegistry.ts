@@ -1,5 +1,6 @@
 import { IYieldStrategy } from './IYieldStrategy';
 import { XlmLiquidityPoolStrategy } from './XlmLiquidityPoolStrategy';
+import { YourProtocolStrategy } from './YourProtocolStrategy';
 
 export class StrategyRegistry {
   private strategies: Map<string, IYieldStrategy> = new Map();
@@ -33,4 +34,5 @@ export class StrategyRegistry {
 (function registerDefaults() {
   const registry = StrategyRegistry.getInstance();
   registry.register(new XlmLiquidityPoolStrategy());
+  registry.register(new YourProtocolStrategy());
 })();

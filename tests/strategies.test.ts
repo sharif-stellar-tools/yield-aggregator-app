@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { StrategyRegistry } from '../src/core/strategies/StrategyRegistry';
 import { XlmLiquidityPoolStrategy } from '../src/core/strategies/XlmLiquidityPoolStrategy';
+import { YourProtocolStrategy } from '../src/core/strategies/YourProtocolStrategy';
 
 describe('StrategyRegistry', () => {
   let registry: StrategyRegistry;
@@ -30,7 +31,12 @@ describe('StrategyRegistry', () => {
 
   it('lists all registered strategies', () => {
     const all = registry.getAll();
-    expect(all.length).to.be.at.least(1);
+    expect(all.length).to.be.at.least(2);
+  });
+
+  it('has Your Protocol registered by default', () => {
+    const names = registry.getNames();
+    expect(names).to.include('Your Protocol');
   });
 });
 
