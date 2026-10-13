@@ -17,7 +17,22 @@ const vaults: Record<string, VaultState> = {
 // Getter proxy array for in-memory events access
 const events: ContractEvent[] = defaultDb.getEvents();
 
+import { compileVaultAnalytics } from '../dashboard/analytics';
+import { generateDashboardHtml } from '../dashboard/prototype';
+
 // Routes
+app.get('/api/v1/vaults/:id/analytics', (req: Request, res: Response) => {
+  const analytics = compileVaultAnalytics(req.params.id, defaultDb);
+  res.json(analytics);
+});
+
+app.get('/api/v1/vaults/:id/dashboard', (req: Request, res: Response) => {
+  const analytics = compileVaultAnalytics(req.params.id, defaultDb);
+  const html = generateDashboardHtml(analytics);
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
 app.get('/api/v1/vaults/:id', (req: Request, res: Response) => {
   const vault = defaultDb.getVault(req.params.id);
   if (!vault) {
