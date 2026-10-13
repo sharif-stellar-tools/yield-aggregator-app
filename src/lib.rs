@@ -11,6 +11,8 @@ pub enum Error {
     NoPendingWithdrawal = 4,
     WithdrawalLocked = 5,
     NotAuthorized = 6,
+    AllocationExceedsBalance = 7,
+    InvalidPercentageSum = 8,
 }
 
 #[contracttype]
@@ -31,6 +33,13 @@ pub enum StorageKey {
 pub struct WithdrawalRecord {
     pub amount: i128,
     pub unlock_time: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StrategyAllocation {
+    pub strategy: Address,
+    pub percentage_bps: u32,
 }
 
 #[contract]
@@ -141,6 +150,7 @@ impl TimeLockVault {
     /// Allocates vault capital to yield strategies (restricted to Admin)
     pub fn allocate_strategy(env: Env, admin: Address, strategy: Address, amount: i128) -> Result<(), Error> {
         admin.require_auth();
+        Self::check_active(&env)?;
         
         let storage = env.storage().persistent();
         let saved_admin: Address = storage.get(&StorageKey::Admin).unwrap();
@@ -150,6 +160,11 @@ impl TimeLockVault {
 
         let token_addr: Address = storage.get(&StorageKey::Token).unwrap();
         let client = token::Client::new(&env, &token_addr);
+
+        let vault_balance = client.balance(&env.current_contract_address());
+        if amount > vault_balance {
+            return Err(Error::AllocationExceedsBalance);
+        }
         
         // Transfer to strategy address
         client.transfer(&env.current_contract_address(), &strategy, &amount);
@@ -158,6 +173,57 @@ impl TimeLockVault {
         let strategy_key = StorageKey::StrategyAllocations(strategy.clone());
         let current_alloc: i128 = storage.get(&strategy_key).unwrap_or(0);
         storage.set(&strategy_key, &(current_alloc + amount));
+
+        Ok(())
+    }
+
+    /// Allocates vault capital across multiple strategies with strict percentage and vault balance validation
+    pub fn allocate_multi_strategy(
+        env: Env,
+        admin: Address,
+        allocations: soroban_sdk::Vec<StrategyAllocation>,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        Self::check_active(&env)?;
+
+        let storage = env.storage().persistent();
+        let saved_admin: Address = storage.get(&StorageKey::Admin).unwrap();
+        if admin != saved_admin {
+            return Err(Error::NotAuthorized);
+        }
+
+        let token_addr: Address = storage.get(&StorageKey::Token).unwrap();
+        let client = token::Client::new(&env, &token_addr);
+
+        let vault_balance = client.balance(&env.current_contract_address());
+
+        // Validate percentage sum (cannot exceed 10000 basis points / 100%)
+        let mut total_bps: u32 = 0;
+        for alloc in allocations.iter() {
+            total_bps += alloc.percentage_bps;
+        }
+
+        if total_bps > 10000 {
+            return Err(Error::InvalidPercentageSum);
+        }
+
+        let mut total_allocated_amount: i128 = 0;
+        for alloc in allocations.iter() {
+            let amount = (vault_balance * (alloc.percentage_bps as i128)) / 10000;
+            total_allocated_amount += amount;
+
+            if total_allocated_amount > vault_balance {
+                return Err(Error::AllocationExceedsBalance);
+            }
+
+            if amount > 0 {
+                client.transfer(&env.current_contract_address(), &alloc.strategy, &amount);
+
+                let strategy_key = StorageKey::StrategyAllocations(alloc.strategy.clone());
+                let current_alloc: i128 = storage.get(&strategy_key).unwrap_or(0);
+                storage.set(&strategy_key, &(current_alloc + amount));
+            }
+        }
 
         Ok(())
     }
