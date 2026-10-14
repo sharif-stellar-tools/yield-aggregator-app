@@ -1,10 +1,14 @@
 #![cfg(test)]
 
 use super::{TimeLockVault, TimeLockVaultClient, Error};
-use soroban_sdk::{Env, Address, testutils::Address as _, token};
+use soroban_sdk::{Env, Address, BytesN, testutils::{Address as _, Ledger as _}, token};
 
-fn create_token_contract<'a>(env: &Env, admin: &Address) -> token::Client<'a> {
-    token::Client::new(env, &env.register_stellar_asset_contract(admin.clone()))
+fn create_token_contract<'a>(env: &Env, admin: &Address) -> (token::Client<'a>, token::StellarAssetClient<'a>) {
+    let token_address = env.register_stellar_asset_contract(admin.clone());
+    (
+        token::Client::new(env, &token_address),
+        token::StellarAssetClient::new(env, &token_address),
+    )
 }
 
 #[test]
@@ -16,8 +20,8 @@ fn test_vault_flow() {
     let user = Address::generate(&env);
     
     // Deploy mock token
-    let token = create_token_contract(&env, &admin);
-    token.mint(&user, &1000);
+    let (token, token_admin) = create_token_contract(&env, &admin);
+    token_admin.mint(&user, &1000);
 
     // Deploy vault
     let vault_id = env.register_contract(None, TimeLockVault);
@@ -58,7 +62,7 @@ fn test_paused_state() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
     
-    let token = create_token_contract(&env, &admin);
+    let (token, _) = create_token_contract(&env, &admin);
     let vault_id = env.register_contract(None, TimeLockVault);
     let vault_client = TimeLockVaultClient::new(&env, &vault_id);
 
@@ -70,4 +74,25 @@ fn test_paused_state() {
     // Deposit should fail when paused
     let deposit_fail = vault_client.try_deposit(&user, &100);
     assert_eq!(deposit_fail, Err(Ok(Error::ContractPaused)));
+}
+
+#[test]
+fn test_upgrade_authorization() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let non_admin = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    let vault_id = env.register_contract(None, TimeLockVault);
+    let vault_client = TimeLockVaultClient::new(&env, &vault_id);
+
+    vault_client.initialize(&admin, &token, &3600);
+
+    let dummy_hash = BytesN::from_array(&env, &[7u8; 32]);
+
+    // Unauthorized non-admin upgrade call should be rejected
+    let upgrade_fail = vault_client.try_upgrade(&non_admin, &dummy_hash);
+    assert_eq!(upgrade_fail, Err(Ok(Error::NotAuthorized)));
 }

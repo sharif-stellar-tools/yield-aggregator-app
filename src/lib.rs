@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracterror, contracttype, Env, Address, token};
+use soroban_sdk::{contract, contractimpl, contracterror, contracttype, Env, Address, BytesN, token};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -173,6 +173,20 @@ impl TimeLockVault {
         }
 
         storage.set(&StorageKey::Paused, &paused);
+        Ok(())
+    }
+
+    /// Upgrades the contract code with a new WASM hash (restricted to Admin)
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        admin.require_auth();
+
+        let storage = env.storage().persistent();
+        let saved_admin: Address = storage.get(&StorageKey::Admin).unwrap();
+        if admin != saved_admin {
+            return Err(Error::NotAuthorized);
+        }
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
     }
 
