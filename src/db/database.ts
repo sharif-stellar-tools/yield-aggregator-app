@@ -24,6 +24,23 @@ export interface ContractEvent {
   timestamp: string;
 }
 
+export interface ApySnapshot {
+  id: string;
+  vaultId: string;
+  apy: number;
+  timestamp: string;
+}
+
+export interface CumulativeApyMetrics {
+  vaultId: string;
+  currentApy: number;
+  rollingAvg7d: number;
+  rollingAvg30d: number;
+  sampleCount7d: number;
+  sampleCount30d: number;
+  calculatedAt: string;
+}
+
 interface EventRow {
   id: string;
   contract_id: string;
@@ -40,6 +57,23 @@ interface VaultRow {
   tvl: number;
   apy: number;
   allocations_json: string;
+}
+
+interface ApySnapshotRow {
+  id: string;
+  vault_id: string;
+  apy: number;
+  timestamp: string;
+}
+
+interface CumulativeApyRow {
+  vault_id: string;
+  current_apy: number;
+  rolling_avg_7d: number;
+  rolling_avg_30d: number;
+  sample_count_7d: number;
+  sample_count_30d: number;
+  calculated_at: string;
 }
 
 export class IndexerDatabase {
@@ -83,6 +117,27 @@ export class IndexerDatabase {
         tvl REAL NOT NULL,
         apy REAL NOT NULL,
         allocations_json TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS apy_snapshots (
+        id TEXT PRIMARY KEY,
+        vault_id TEXT NOT NULL,
+        apy REAL NOT NULL,
+        timestamp TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_apy_snapshots_vault_id ON apy_snapshots (vault_id);
+      CREATE INDEX IF NOT EXISTS idx_apy_snapshots_timestamp ON apy_snapshots (timestamp);
+
+      CREATE TABLE IF NOT EXISTS cumulative_apy_metrics (
+        vault_id TEXT PRIMARY KEY,
+        current_apy REAL NOT NULL,
+        rolling_avg_7d REAL NOT NULL,
+        rolling_avg_30d REAL NOT NULL,
+        sample_count_7d INTEGER NOT NULL,
+        sample_count_30d INTEGER NOT NULL,
+        calculated_at TEXT NOT NULL
       );
     `;
     this.db.exec(schemaSql);
@@ -163,6 +218,62 @@ export class IndexerDatabase {
         }
       });
       seedVaultsTx(defaultVaults);
+    }
+
+    const apyCount = (this.db.prepare('SELECT COUNT(*) as count FROM apy_snapshots').get() as { count: number }).count;
+    if (apyCount === 0) {
+      const insertApy = this.db.prepare(`
+        INSERT INTO apy_snapshots (id, vault_id, apy, timestamp)
+        VALUES (@id, @vault_id, @apy, @timestamp)
+      `);
+
+      const now = Date.now();
+      const dayMs = 86400 * 1000;
+      const seedApyRows: ApySnapshotRow[] = [];
+
+      // Seed 30 days of historical APY snapshots for vault-usdc
+      const usdcApyPoints = [
+        8.10, 8.15, 8.20, 8.25, 8.18, 8.30, 8.35,
+        8.28, 8.32, 8.40, 8.38, 8.42, 8.45, 8.50,
+        8.48, 8.52, 8.55, 8.47, 8.42, 8.39, 8.41,
+        8.44, 8.46, 8.50, 8.48, 8.45, 8.47, 8.46, 8.44, 8.45
+      ];
+      for (let i = 0; i < usdcApyPoints.length; i++) {
+        const daysAgo = 29 - i;
+        seedApyRows.push({
+          id: `snap_usdc_${i + 1}`,
+          vault_id: 'vault-usdc',
+          apy: usdcApyPoints[i],
+          timestamp: new Date(now - daysAgo * dayMs).toISOString(),
+        });
+      }
+
+      // Seed 30 days of historical APY snapshots for vault-xlm
+      const xlmApyPoints = [
+        3.95, 3.98, 4.02, 4.00, 4.05, 4.08, 4.05,
+        4.10, 4.12, 4.09, 4.11, 4.14, 4.15, 4.10,
+        4.08, 4.12, 4.15, 4.18, 4.12, 4.09, 4.11,
+        4.13, 4.15, 4.12, 4.10, 4.11, 4.14, 4.13, 4.11, 4.12
+      ];
+      for (let i = 0; i < xlmApyPoints.length; i++) {
+        const daysAgo = 29 - i;
+        seedApyRows.push({
+          id: `snap_xlm_${i + 1}`,
+          vault_id: 'vault-xlm',
+          apy: xlmApyPoints[i],
+          timestamp: new Date(now - daysAgo * dayMs).toISOString(),
+        });
+      }
+
+      const seedApyTx = this.db.transaction((rows: ApySnapshotRow[]) => {
+        for (const row of rows) {
+          insertApy.run(row);
+        }
+      });
+      seedApyTx(seedApyRows);
+
+      this.calculateCumulativeApyMetrics('vault-usdc');
+      this.calculateCumulativeApyMetrics('vault-xlm');
     }
   }
 
@@ -261,6 +372,148 @@ export class IndexerDatabase {
     this.db.prepare('UPDATE vaults SET tvl = ? WHERE id = ?').run(newTvl, id);
     vault.tvl = newTvl;
     return vault;
+  }
+
+  public insertApySnapshot(snapshot: ApySnapshot): ApySnapshot {
+    this.db
+      .prepare(`
+        INSERT INTO apy_snapshots (id, vault_id, apy, timestamp)
+        VALUES (@id, @vault_id, @apy, @timestamp)
+      `)
+      .run({
+        id: snapshot.id,
+        vault_id: snapshot.vaultId,
+        apy: snapshot.apy,
+        timestamp: snapshot.timestamp,
+      });
+
+    return snapshot;
+  }
+
+  public recordApy(vaultId: string, apy: number, timestamp?: string): { snapshot: ApySnapshot; metrics: CumulativeApyMetrics } {
+    const snapshot: ApySnapshot = {
+      id: `snap_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`,
+      vaultId,
+      apy,
+      timestamp: timestamp || new Date().toISOString(),
+    };
+    this.insertApySnapshot(snapshot);
+
+    // Update current vault APY if vault exists
+    const vault = this.getVault(vaultId);
+    if (vault) {
+      this.db.prepare('UPDATE vaults SET apy = ? WHERE id = ?').run(apy, vaultId);
+    }
+
+    const metrics = this.calculateCumulativeApyMetrics(vaultId);
+    return { snapshot, metrics };
+  }
+
+  public getApySnapshots(vaultId: string, limit: number = 100): ApySnapshot[] {
+    const rows = this.db
+      .prepare('SELECT id, vault_id, apy, timestamp FROM apy_snapshots WHERE vault_id = ? ORDER BY timestamp DESC LIMIT ?')
+      .all(vaultId, limit) as ApySnapshotRow[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      vaultId: r.vault_id,
+      apy: r.apy,
+      timestamp: r.timestamp,
+    }));
+  }
+
+  public calculateCumulativeApyMetrics(vaultId: string, asOfDate?: Date): CumulativeApyMetrics {
+    const now = asOfDate ? asOfDate.getTime() : Date.now();
+    const sevenDaysAgo = new Date(now - 7 * 86400 * 1000).toISOString();
+    const thirtyDaysAgo = new Date(now - 30 * 86400 * 1000).toISOString();
+    const asOfIso = new Date(now).toISOString();
+
+    const vault = this.getVault(vaultId);
+    const fallbackApy = vault ? vault.apy : 0;
+
+    // Get 7-day stats
+    const stats7d = this.db
+      .prepare(`
+        SELECT AVG(apy) as avg_apy, COUNT(*) as sample_count
+        FROM apy_snapshots
+        WHERE vault_id = ? AND timestamp >= ? AND timestamp <= ?
+      `)
+      .get(vaultId, sevenDaysAgo, asOfIso) as { avg_apy: number | null; sample_count: number };
+
+    // Get 30-day stats
+    const stats30d = this.db
+      .prepare(`
+        SELECT AVG(apy) as avg_apy, COUNT(*) as sample_count
+        FROM apy_snapshots
+        WHERE vault_id = ? AND timestamp >= ? AND timestamp <= ?
+      `)
+      .get(vaultId, thirtyDaysAgo, asOfIso) as { avg_apy: number | null; sample_count: number };
+
+    // Get latest snapshot apy or fallback to vault apy
+    const latestSnapshot = this.db
+      .prepare('SELECT apy FROM apy_snapshots WHERE vault_id = ? ORDER BY timestamp DESC LIMIT 1')
+      .get(vaultId) as { apy: number } | undefined;
+
+    const currentApy = latestSnapshot ? latestSnapshot.apy : fallbackApy;
+    const rollingAvg7d = stats7d.avg_apy !== null ? Number(stats7d.avg_apy.toFixed(2)) : currentApy;
+    const rollingAvg30d = stats30d.avg_apy !== null ? Number(stats30d.avg_apy.toFixed(2)) : currentApy;
+
+    const metrics: CumulativeApyMetrics = {
+      vaultId,
+      currentApy,
+      rollingAvg7d,
+      rollingAvg30d,
+      sampleCount7d: stats7d.sample_count,
+      sampleCount30d: stats30d.sample_count,
+      calculatedAt: asOfIso,
+    };
+
+    this.db
+      .prepare(`
+        INSERT INTO cumulative_apy_metrics (vault_id, current_apy, rolling_avg_7d, rolling_avg_30d, sample_count_7d, sample_count_30d, calculated_at)
+        VALUES (@vault_id, @current_apy, @rolling_avg_7d, @rolling_avg_30d, @sample_count_7d, @sample_count_30d, @calculated_at)
+        ON CONFLICT(vault_id) DO UPDATE SET
+          current_apy = excluded.current_apy,
+          rolling_avg_7d = excluded.rolling_avg_7d,
+          rolling_avg_30d = excluded.rolling_avg_30d,
+          sample_count_7d = excluded.sample_count_7d,
+          sample_count_30d = excluded.sample_count_30d,
+          calculated_at = excluded.calculated_at
+      `)
+      .run({
+        vault_id: metrics.vaultId,
+        current_apy: metrics.currentApy,
+        rolling_avg_7d: metrics.rollingAvg7d,
+        rolling_avg_30d: metrics.rollingAvg30d,
+        sample_count_7d: metrics.sampleCount7d,
+        sample_count_30d: metrics.sampleCount30d,
+        calculated_at: metrics.calculatedAt,
+      });
+
+    return metrics;
+  }
+
+  public getCumulativeApyMetrics(vaultId: string): CumulativeApyMetrics | undefined {
+    const row = this.db
+      .prepare('SELECT vault_id, current_apy, rolling_avg_7d, rolling_avg_30d, sample_count_7d, sample_count_30d, calculated_at FROM cumulative_apy_metrics WHERE vault_id = ?')
+      .get(vaultId) as CumulativeApyRow | undefined;
+
+    if (!row) {
+      if (this.getVault(vaultId)) {
+        return this.calculateCumulativeApyMetrics(vaultId);
+      }
+      return undefined;
+    }
+
+    return {
+      vaultId: row.vault_id,
+      currentApy: row.current_apy,
+      rollingAvg7d: row.rolling_avg_7d,
+      rollingAvg30d: row.rolling_avg_30d,
+      sampleCount7d: row.sample_count_7d,
+      sampleCount30d: row.sample_count_30d,
+      calculatedAt: row.calculated_at,
+    };
   }
 
   public close(): void {

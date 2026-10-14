@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { defaultDb, ContractEvent, VaultState, IndexerDatabase } from '../db/database';
+import { defaultDb, ContractEvent, VaultState, IndexerDatabase, ApySnapshot, CumulativeApyMetrics } from '../db/database';
 
 const app = express();
 app.use(express.json());
@@ -23,7 +23,31 @@ app.get('/api/v1/vaults/:id', (req: Request, res: Response) => {
   if (!vault) {
     return res.status(404).json({ error: `Vault not found: ${req.params.id}` });
   }
-  res.json(vault);
+  const metrics = defaultDb.getCumulativeApyMetrics(req.params.id);
+  res.json({ ...vault, metrics });
+});
+
+app.get('/api/v1/vaults/:id/apy/metrics', (req: Request, res: Response) => {
+  const metrics = defaultDb.getCumulativeApyMetrics(req.params.id);
+  if (!metrics) {
+    return res.status(404).json({ error: `Vault not found: ${req.params.id}` });
+  }
+  res.json(metrics);
+});
+
+app.get('/api/v1/vaults/:id/apy/history', (req: Request, res: Response) => {
+  const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+  const history = defaultDb.getApySnapshots(req.params.id, limit);
+  res.json(history);
+});
+
+app.post('/api/v1/vaults/:id/apy', (req: Request, res: Response) => {
+  const { apy, timestamp } = req.body;
+  if (apy === undefined || isNaN(parseFloat(apy))) {
+    return res.status(400).json({ error: 'Valid apy value is required' });
+  }
+  const result = defaultDb.recordApy(req.params.id, parseFloat(apy), timestamp);
+  res.status(201).json(result);
 });
 
 app.get('/api/v1/events', (req: Request, res: Response) => {

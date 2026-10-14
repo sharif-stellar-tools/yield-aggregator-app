@@ -86,14 +86,64 @@ async function runTests() {
   const vaultAfterReboot = session2Db.getVault('vault-usdc');
   assert.ok(vaultAfterReboot, 'Vault state must persist across restart');
   assert.strictEqual(vaultAfterReboot?.tvl, 1250000 + 9999, 'Persisted TVL must reflect prior updates');
-
   session2Db.close();
-
-  // Cleanup temporary test directory
   fs.rmSync(tmpDir, { recursive: true, force: true });
   console.log('✓ Passed: Event and vault state successfully persisted across server restart.\n');
 
-  console.log('All SQLite database storage tests passed successfully! (5/5)');
+  // Test 6: Historical APY snapshots and cumulative rolling metrics calculation
+  console.log('Test 6: Historical APY snapshots and cumulative rolling metrics calculation');
+  const testDb = new IndexerDatabase(':memory:');
+  const usdcMetrics = testDb.getCumulativeApyMetrics('vault-usdc');
+  assert.ok(usdcMetrics, 'Cumulative metrics should exist for vault-usdc');
+  assert.strictEqual(usdcMetrics?.vaultId, 'vault-usdc');
+  assert.strictEqual(usdcMetrics?.sampleCount30d, 30, 'Should have 30 historical samples for 30d window');
+  assert.ok(usdcMetrics?.sampleCount7d >= 7, 'Should have at least 7 samples for 7d window');
+  assert.ok(usdcMetrics?.rollingAvg7d > 0, 'Rolling 7d APY should be positive');
+  assert.ok(usdcMetrics?.rollingAvg30d > 0, 'Rolling 30d APY should be positive');
+  console.log(`✓ Passed: Calculated rollingAvg7d = ${usdcMetrics?.rollingAvg7d}%, rollingAvg30d = ${usdcMetrics?.rollingAvg30d}% (samples: 7d=${usdcMetrics?.sampleCount7d}, 30d=${usdcMetrics?.sampleCount30d}).\n`);
+
+  // Test 7: Recording new APY snapshot dynamically recalculates rolling metrics
+  console.log('Test 7: Recording new APY snapshot dynamically recalculates metrics');
+  const snapResult = testDb.recordApy('vault-usdc', 9.50);
+  assert.strictEqual(snapResult.snapshot.apy, 9.50);
+  assert.strictEqual(snapResult.snapshot.vaultId, 'vault-usdc');
+  assert.strictEqual(snapResult.metrics.currentApy, 9.50);
+
+  const updatedVault = testDb.getVault('vault-usdc');
+  assert.strictEqual(updatedVault?.apy, 9.50, 'Vault APY should update to latest snapshot');
+
+  const snapshots = testDb.getApySnapshots('vault-usdc', 5);
+  assert.strictEqual(snapshots[0].apy, 9.50, 'Latest snapshot should be 9.50');
+  console.log('✓ Passed: Dynamic snapshot recording updates current APY and rolling averages.\n');
+
+  testDb.close();
+
+  // Test 8: APY snapshots and cumulative metrics persistence across reboot
+  console.log('Test 8: APY persistence across server restarts (Disk DB)');
+  const apyTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yield-apy-test-'));
+  const apyDbFile = path.join(apyTmpDir, 'apy_persistence.db');
+
+  const diskDb1 = new IndexerDatabase(apyDbFile);
+  diskDb1.recordApy('vault-xlm', 5.25);
+  const diskMetricsBefore = diskDb1.getCumulativeApyMetrics('vault-xlm');
+  assert.strictEqual(diskMetricsBefore?.currentApy, 5.25);
+  diskDb1.close();
+
+  const diskDb2 = new IndexerDatabase(apyDbFile);
+  const diskMetricsAfter = diskDb2.getCumulativeApyMetrics('vault-xlm');
+  assert.ok(diskMetricsAfter, 'Cumulative metrics must persist across restart');
+  assert.strictEqual(diskMetricsAfter?.currentApy, 5.25, 'Current APY must match persisted value');
+  assert.strictEqual(diskMetricsAfter?.rollingAvg7d, diskMetricsBefore?.rollingAvg7d);
+  assert.strictEqual(diskMetricsAfter?.rollingAvg30d, diskMetricsBefore?.rollingAvg30d);
+
+  const persistedSnaps = diskDb2.getApySnapshots('vault-xlm', 1);
+  assert.strictEqual(persistedSnaps[0].apy, 5.25, 'Persisted snapshot must be intact');
+  diskDb2.close();
+
+  fs.rmSync(apyTmpDir, { recursive: true, force: true });
+  console.log('✓ Passed: APY metrics and history fully persist across database restarts.\n');
+
+  console.log('All SQLite database storage tests passed successfully! (8/8)');
 }
 
 runTests().catch((err) => {

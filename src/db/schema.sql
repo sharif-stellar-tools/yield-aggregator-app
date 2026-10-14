@@ -23,3 +23,25 @@ CREATE TABLE IF NOT EXISTS vaults (
   apy REAL NOT NULL,
   allocations_json TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS apy_snapshots (
+  id TEXT PRIMARY KEY,
+  vault_id TEXT NOT NULL,
+  apy REAL NOT NULL,
+  timestamp TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_apy_snapshots_vault_id ON apy_snapshots (vault_id);
+CREATE INDEX IF NOT EXISTS idx_apy_snapshots_timestamp ON apy_snapshots (timestamp);
+
+CREATE TABLE IF NOT EXISTS cumulative_apy_metrics (
+  vault_id TEXT PRIMARY KEY,
+  current_apy REAL NOT NULL,
+  rolling_avg_7d REAL NOT NULL,
+  rolling_avg_30d REAL NOT NULL,
+  sample_count_7d INTEGER NOT NULL,
+  sample_count_30d INTEGER NOT NULL,
+  calculated_at TEXT NOT NULL
+);
+
